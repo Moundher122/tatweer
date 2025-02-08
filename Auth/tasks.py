@@ -1,6 +1,37 @@
+import openrouteservice
 from projectcore import settings
 from django.core.mail import send_mail
+from geopy.geocoders import Nominatim
+from django.http import JsonResponse
 from celery import shared_task
+@shared_task
+def calculate_travel_time(origin, destination):
+    """Calculate travel time between two locations and return duration in hours and minutes."""
+    geolocator = Nominatim(user_agent="geoapi")
+    
+    # Get coordinates
+    origin_location = geolocator.geocode(origin)
+    destination_location = geolocator.geocode(destination)
+    
+    if not origin_location or not destination_location:
+        return {"error": "Could not find coordinates for the given locations"}
+    
+    origin_coords = [origin_location.longitude, origin_location.latitude]  # [lon, lat]
+    dest_coords = [destination_location.longitude, destination_location.latitude]  # [lon, lat]
+
+    # OpenRouteService Client
+    client = openrouteservice.Client(key="5b3ce3597851110001cf6248cc9abad880ae4de2bae9b4ad18d02959")
+    route = client.directions(coordinates=[origin_coords, dest_coords], profile="driving-car", format="geojson")
+
+    # Extract travel time
+    duration_sec = route["features"][0]["properties"]["segments"][0]["duration"]
+    duration_min = duration_sec / 60
+    duration_hr = duration_min / 60
+
+    return {
+        "hours": round(duration_hr, 2),
+        "minutes": round(duration_min, 0),
+    }
 
 
 @shared_task

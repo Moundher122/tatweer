@@ -28,11 +28,11 @@ class feedser(serializers.ModelSerializer):
 class truckser(serializers.ModelSerializer):
     class Meta:
         model = Truck
-        fields = ['name', 'volume','status','type','full','percentage']
+        fields = ['name', 'height','width','status','type','full','percentage','weight']
 class sharedtruckser(serializers.ModelSerializer):
     class Meta:
         model = sharedtruckes
-        fields = ['name', 'volume','status','type','full','percentage']
+        fields = ['name','height','width','status','type','full','percentage']
 
 class UserCompanySerializer(serializers.ModelSerializer):
     company = CompanySerializer()

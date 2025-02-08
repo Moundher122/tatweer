@@ -17,5 +17,7 @@ urlpatterns = [
     path('truck', views.addtruck.as_view()),
     path('truck/<int:id>', views.deletetruck.as_view()),
     path('road/<int:id>', views.deleteroad.as_view()),
-    path('<int:id>',views.OptimizeSpace.as_view())
+    path('<int:id>',views.OptimizeSpace.as_view()),
+    path('feedback',views.addfeedback.as_view()),
+    path('ship',views.ship.as_view()),
 ]
