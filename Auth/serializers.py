@@ -120,19 +120,18 @@ class TransportSerializer(serializers.ModelSerializer):
         return representation
 
 class UserTransportSerializer(serializers.ModelSerializer): 
-    transport = TransportSerializer()
     password = serializers.CharField(write_only=True)
+    transport = TransportSerializer()
     type = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'number', 'transport', 'type', 'date_joined', 'password']
+        fields = ['id', 'name', 'email', 'transport','number', 'type', 'date_joined', 'password']
 
     def create(self, validated_data):
         transport_data = validated_data.pop('transport', None)
         validated_data['password'] = make_password(validated_data['password'])
         user = User.objects.create(**validated_data)
-
         if transport_data:
             trucks=transport_data.pop('trucks')
             transport = Transport.objects.create(**transport_data)
