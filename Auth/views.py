@@ -193,20 +193,16 @@ class RecommendBestTransporterAPIView(APIView):
         desti = request.data.get('destination')
         begin = request.data.get('begin')
         produit = request.data.get('produit')
-        amount = request.data.get('amount')
+        amount = request.data.get('ammount')
         other = request.data.get('other')
         truck_type = 'van' if other == 'rapid delivery' else 'Truck'
-
         model = train_transporter_model()
-
         try:
             prod = models.Produit.objects.get(name=produit)
         except models.Produit.DoesNotExist:
             return Response({"error": "Product does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
         if model is None:
             return Response({"error": "Not enough feedback data to train the model"}, status=status.HTTP_400_BAD_REQUEST)
-
         transporters = models.Transport.objects.filter(
             trucks__status='Free',
             road__destination=desti,
@@ -215,17 +211,14 @@ class RecommendBestTransporterAPIView(APIView):
             trucks__weight__gte=int(amount) * int(prod.weight)
         )
         recommendations = []
-
         for transporter in transporters:
             feedbacks = models.Feedback.objects.filter(transporter=transporter)
-
             for truck in transporter.trucks.all():
                 truck.percentage = truck.weight / (int(amount) * int(prod.weight))
                 truck.save()
                 if int(truck.weight) == int(amount) * int(prod.weight):
                     truck.full = True
                     truck.save()
-
             if feedbacks.exists():
                 avg_rating = feedbacks.aggregate(Avg('rating'))["rating__avg"] or 0
                 avg_time = feedbacks.aggregate(Avg('delivery_time'))["delivery_time__avg"] or 0
@@ -247,7 +240,6 @@ class RecommendBestTransporterAPIView(APIView):
         recommendations = sorted(recommendations, key=lambda x: (-x["predicted_success"], -x["average_rating"]))
 
         return Response({'recommendation': recommendations}, status=status.HTTP_200_OK)
-
 class addroad(APIView):
     permission_classes = [IsAuthenticated]
 
