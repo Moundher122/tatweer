@@ -1,9 +1,7 @@
 import os
 from celery import Celery
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'projectcore.settings')
 
-# Set Django settings module
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ProjectCore.settings')
-
-app = Celery('ProjectCore')#change projectcore with ur project name
+app = Celery('projectcore')
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks() #to make all the tasks auto detected
+app.autodiscover_tasks() 
