@@ -79,7 +79,7 @@ class road(models.Model):
         return self.name
 
 class Transport(models.Model):
-    trucks = models.ManyToManyField(Truck, verbose_name="Trucks")
+    trucks = models.ManyToManyField(Truck, verbose_name="Trucks",null=True)
     shared_trucks = models.ManyToManyField(sharedtruckes, verbose_name="Shared Trucks")
     price_per_km = models.FloatField(null=True)
     price_per_day = models.FloatField(null=True)
