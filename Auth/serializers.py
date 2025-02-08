@@ -38,7 +38,6 @@ class UserCompanySerializer(serializers.ModelSerializer):
     company = CompanySerializer()
     password = serializers.CharField(write_only=True)
     type = serializers.CharField(read_only=True)
-
     class Meta:
         model = User
         fields = ['id', 'name', 'email', 'number', 'company', 'type', 'date_joined', 'password']
@@ -82,7 +81,7 @@ class roadser(serializers.ModelSerializer):
         fields = '__all__'
 class TransportSerializer(serializers.ModelSerializer):
     driver = driverserl(required=False)
-    trucks = truckser(many=True)
+    trucks = truckser(many=True,required=False)
     road=roadser(required=False)
 
     class Meta:
