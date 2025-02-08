@@ -6,7 +6,7 @@ Tatweer is a logistics-focused platform designed to optimize transportation and 
 - **AI-Powered Container Space Optimization**: Uses volume-based calculations to optimize container space.
 - **Secure Payment System**: Ensures secure transactions.
 - **Task Management with RabbitMQ**: Efficient handling of asynchronous tasks.
-- **Real-Time Updates**: Provides logistics tracking without WebSockets.
+- **Real-Time Updates**: Provides logistics tracking with WebSockets.
 - **Scalable Backend**: Built using Django and Django Rest Framework (DRF).
 
 ## Installation
