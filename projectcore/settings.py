@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from datetime import timedelta
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 ALLOWED_HOSTS = ['*']
 
@@ -39,11 +41,13 @@ INSTALLED_APPS = [
     'Auth',
     'rest_framework',
     'rest_framework_simplejwt',
-    'drf_yasg',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
     'django_celery_beat'
 ]
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',  # Use JWT for authentication
     ),
@@ -132,9 +136,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  
 EMAIL_PORT = 587  
 EMAIL_USE_TLS = True  
-EMAIL_HOST_USER = os.getenv('EMAIL') 
-EMAIL_HOST_PASSWORD = os.getenv('EMAILHOSTPASSWORD')
-DEFAULT_FROM_EMAIL = os.getenv('EMAIL')
+EMAIL_HOST_USER = "bouroumanamoundher@gmail.com"
+EMAIL_HOST_PASSWORD = "ppyw cvoa jhim term"
+DEFAULT_FROM_EMAIL = "bouroumanamoundher@gmail.com"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/

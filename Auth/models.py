@@ -27,7 +27,7 @@ class Produit(models.Model):
     company = models.ForeignKey("Auth.Company", verbose_name="Company", on_delete=models.CASCADE, null=True)
 
     def __str__(self):
-        return f"{self.name} - {self.volume}m³ - {self.weight}kg"
+        return f"{self.name} - {self.weight}kg"
 
 class Company(models.Model):
     def __str__(self):
@@ -61,13 +61,13 @@ class Truck(models.Model):
     name = models.CharField(max_length=50)
     height = models.FloatField()
     width = models.FloatField()
-    maxweight = models.FloatField()
+    weight = models.FloatField()
     type = models.CharField(max_length=50,choices=type_trucks)
     full = models.BooleanField(default=False)
     percentage = models.FloatField(default=0)
 
     def __str__(self):
-        return f"{self.name} - {self.volume}m³"
+        return f"{self.name}"
 
 class road(models.Model):
     name = models.CharField(max_length=50)
@@ -148,9 +148,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 class track(models.Model):
     destination = models.CharField(max_length=50)
     begin = models.CharField(max_length=50)
-    date = models.CharField(max_length=50)
-    produit = models.ManyToManyField("Auth.Produit", verbose_name="produits")
-    amount = models.IntegerField()
+    date = models.CharField(max_length=50,null=True)
+    truck= models.ForeignKey(Truck, on_delete=models.CASCADE, related_name='tracks',null=True)
 
 class Feedback(models.Model):
     transporter = models.ForeignKey(Transport, on_delete=models.CASCADE, related_name='feedbacks')

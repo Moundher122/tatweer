@@ -9,6 +9,15 @@ from . import serializers
 from . import models
 from django.db.models import Avg
 from py3dbp import Packer, Bin, Item
+import openrouteservice
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+import openrouteservice
+from . import tasks
+
+
+
 
 class Signup(APIView):
     def post(self, request):
@@ -91,7 +100,6 @@ class deletetruck(APIView):
 
 class finishthetransporteur(APIView):
     permission_classes = [IsAuthenticated]
-
     def put(self, request):
         user = request.user
         data = request.data
@@ -133,7 +141,6 @@ class deletedriver(APIView):
 
 class addproduct(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request):
         if request.user.type == 'transport':
             return Response({'error': 'You are not allowed to add products'}, status=status.HTTP_403_FORBIDDEN)
@@ -150,6 +157,11 @@ class addproduct(APIView):
             user.company.produit_set.add(ser.instance)
             return Response(ser.data, status=status.HTTP_201_CREATED)
         return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get(self,request):
+        user = request.user
+        produits = models.Produit.objects.filter(company=user.company)
+        ser = serializers.Produitser(produits, many=True)
+        return Response(ser.data, status=status.HTTP_200_OK)
 
 class sortie(APIView):
     permission_classes = [IsAuthenticated]
@@ -168,7 +180,6 @@ class sortie(APIView):
 
 class addfeedback(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request):
         data = request.data
         ser = serializers.feedser(data=data)
@@ -184,7 +195,7 @@ class RecommendBestTransporterAPIView(APIView):
         produit = request.data.get('produit')
         amount = request.data.get('amount')
         other = request.data.get('other')
-        truck_type = 'van' if other == 'rapid delivery' else 'truck'
+        truck_type = 'van' if other == 'rapid delivery' else 'Truck'
 
         model = train_transporter_model()
 
@@ -201,27 +212,27 @@ class RecommendBestTransporterAPIView(APIView):
             road__destination=desti,
             road__begin=begin,
             trucks__type=truck_type,
-            trucks__volume__gte=int(amount) * int(prod.volume)
+            trucks__weight__gte=int(amount) * int(prod.weight)
         )
-
         recommendations = []
 
         for transporter in transporters:
             feedbacks = models.Feedback.objects.filter(transporter=transporter)
 
             for truck in transporter.trucks.all():
-                truck.percentage = truck.volume / (int(amount) * int(prod.volume))
+                truck.percentage = truck.weight / (int(amount) * int(prod.weight))
                 truck.save()
-                if int(truck.volume) == int(amount) * int(prod.volume):
+                if int(truck.weight) == int(amount) * int(prod.weight):
                     truck.full = True
                     truck.save()
 
             if feedbacks.exists():
                 avg_rating = feedbacks.aggregate(Avg('rating'))["rating__avg"] or 0
                 avg_time = feedbacks.aggregate(Avg('delivery_time'))["delivery_time__avg"] or 0
+                avg_price= feedbacks.aggregate(Avg('price'))["price__avg"] or 0
 
-                if avg_rating > 0 and avg_time > 0:
-                    predicted_success = model.predict([[avg_rating, avg_time]])[0]
+                if avg_rating > 0 and avg_time > 0 and avg_price>0:
+                    predicted_success = model.predict([[avg_rating, avg_time,avg_price]])[0]
                 else:
                     predicted_success = 0
 
@@ -252,7 +263,6 @@ class addroad(APIView):
 
 class deleteroad(APIView):
     permission_classes = [IsAuthenticated]
-
     def delete(self, request, id):
         try:
             road = models.Road.objects.get(id=id)
@@ -272,58 +282,92 @@ class RecommendBestTransporterSharedAPIView(APIView):
         truck_type = 'van' if other == 'rapid delivery' else 'default_type'
 
         model = train_transporter_model()
-
         try:
             prod = models.Produit.objects.get(name=produit)
         except models.Produit.DoesNotExist:
             return Response({"error": "Product does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
         if model is None:
             return Response({"error": "Not enough feedback data to train the model"}, status=status.HTTP_400_BAD_REQUEST)
-
         transporters = models.Transport.objects.filter(
             shared_trucks__status='Free',
             road__destination=desti,
             road__begin=begin,
             shared_trucks__type=truck_type,
-            shared_trucks__volume__gte=int(amount) * int(prod.volume)
+            shared_trucks__weight__gte=int(amount) * int(prod.weight)
         )
-
         recommendations = []
-
         for transporter in transporters:
             feedbacks = models.Feedback.objects.filter(transporter=transporter)
-
             for shared_truck in transporter.shared_trucks.all():
-                shared_truck.percentage = shared_truck.volume / (int(amount) * int(prod.volume))
+                shared_truck.percentage = shared_truck.weight / (int(amount) * int(prod.weight))
                 shared_truck.save()
-                if int(shared_truck.volume) == int(amount) * int(prod.volume):
+                if int(shared_truck.weight) == int(amount) * int(prod.weight):
                     shared_truck.full = True
                     shared_truck.save()
-
             if feedbacks.exists():
                 avg_rating = feedbacks.aggregate(Avg('rating'))["rating__avg"] or 0
                 avg_time = feedbacks.aggregate(Avg('delivery_time'))["delivery_time__avg"] or 0
-
                 if avg_rating > 0 and avg_time > 0:
                     predicted_success = model.predict([[avg_rating, avg_time]])[0]
                 else:
                     predicted_success = 0
-
                 ser = serializers.TransportSerializer(transporter)
-
                 recommendations.append({
                     "transporter": ser.data,
                     "predicted_success": float(predicted_success),
                     "average_rating": float(avg_rating)
                 })
-
         recommendations = sorted(recommendations, key=lambda x: (-x["predicted_success"], -x["average_rating"]))
-
         return Response({'recommendation': recommendations}, status=status.HTTP_200_OK)
-class findtime(APIView):
-    def post(self,request):
-        pass
+class ship(APIView):
+    def post(self, request):
+        begin = request.data.get('begin')
+        destination = request.data.get('destination')
+        date = request.data.get('date')
+        produit = request.data.get('produit')
+        amount = request.data.get('amount')
+        other = request.data.get('other')
+        recommend_request = request._request 
+        recommend_request.data = {
+            'destination': destination,
+            'begin': begin,
+            'produit': produit,
+            'amount': amount,
+            'other': other
+        }
+
+        # Call the recommendation API with parameters
+        recommender = RecommendBestTransporterAPIView()
+        recommendation_response = recommender.get(recommend_request)
+        recommendations = recommendation_response.data.get('recommendation', [])
+
+        if not recommendations:
+            return Response({"error": "No recommended transporters available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Select the best transporter
+        best_transporter_data = recommendations[0]["transporter"]
+        best_transporter_id = best_transporter_data["id"]
+
+        try:
+            tr = models.Transport.objects.get(id=best_transporter_id)
+            truck = tr.trucks.filter(status='Free').first()
+        except models.Transport.DoesNotExist:
+            return Response({"error": "Recommended transporter not found"}, status=status.HTTP_404_NOT_FOUND)
+        shipment = models.track.objects.create(
+            truck=truck,
+            begin=begin,
+            destination=destination,
+            date=date
+        )
+        driver = models.Drivers.objects.filter(transport=tr).first()
+        time=tasks.calculate_travel_time.delay(begin, destination)
+        tasks.sendemail.delay(f"Your shipment has been scheduled from {begin} to {destination} on {date}. Youn need to start from 8:00 AM", "Shipment Scheduled", [driver.email], "Shipment Scheduled", driver.name)
+        tasks.sendemail.delay(f"Your shipment has been scheduled from {begin} to {destination} on {date}. The estimated time to get your ship is {int(time.result['hours'])+8}", "Shipment Scheduled", [request.user.email], "Shipment Scheduled", request.user.name)
+        return Response({"message": "Shipment scheduled successfully"}, status=status.HTTP_201_CREATED)
+
+        
+
+
 class OptimizeSpace(APIView):
     def get(self, request,id):
         # Step 1: Define the Truck (Container)
